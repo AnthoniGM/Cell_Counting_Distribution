@@ -1,0 +1,121 @@
+INSTRUCTIONS — Cell Counting and Distribution Pipeline
+
+This repository contains all code and macros necessary to perform cell identification, classification, and stratified distribution analysis across CA1 subregions. The analysis proceeds in two stages: FIJI/ImageJ processing followed by Python-based analysis in Jupyter.
+
+================================================================================
+I. IMAGEJ/FIJI WORKFLOW
+================================================================================
+
+1. INITIAL FILE PREPARATION
+----------------------------
+- Open all raw image files in FIJI/ImageJ.
+- Run: `HyperstackOpening_namesCleaned.ijm`
+  → Cleans and reorganizes filenames.
+- Run: `SortColors_AvgimageCreation.ijm`
+  → Splits channels into separate folders and creates average Z-projections.
+
+After this, two directories should exist:
+  - One for GREEN/PV images
+  - One for RED/SST images
+
+Each should contain the following subfolders:
+  - avg, best_segmentation, classifiers, csvs, Green/Red, LabSegmentation, results
+
+2. ROI DEFINITION
+------------------
+- Use `ROI_drawer.py` (Jython) to draw:
+  1. A full ROI (Polygon Tool)
+  2. Segmented lines for stratum oriens and stratum radiatum (Segmented Line Tool)
+    → Lines must extend beyond the boundary of the full ROI.
+
+- Run: `ROI_checker.py` (Jython)
+  → Ensures correct orientation (so vs. sr). Incorrect ROIs are renamed to fix.
+
+- Copy the finalized ROIs to the other cell-type directory (e.g., from PV to SST).
+  → You may need to rename the color channel in the ROI filenames.
+
+- Run: `CalculateROIAreaJython.py` (Jython)
+  → Outputs area measurements for all ROIs.
+
+3. IMAGE CLASSIFICATION (FIJI LabKit)
+--------------------------------------
+- Use LabKit to create multiple classifiers per image set (PV and SST separately).
+- Save classifiers into: `classifiers/`
+- Use “Batch Segment” in LabKit to apply each classifier to all images.
+  → Save outputs in: `LabSegmentation/`, subfolders labeled `1`, `2`, etc.
+
+- Run: `BestSegChooser.py` (Jython)
+  → Manually select the best segmentation per image.
+  → Chosen files are saved to: `best_segmentation/`
+
+✔ FIJI/ImageJ preprocessing is now complete. Proceed to Python analysis.
+
+================================================================================
+II. PYTHON ANALYSIS (JUPYTER NOTEBOOKS)
+================================================================================
+
+1. OBJECT COUNTING AND STRATIFICATION
+--------------------------------------
+- Run: `3DObjectsCounter_Watershed.ipynb`
+  → Applies a size-based 3D watershed to gently split large objects.
+  → Adjust pixel dimensions and object volume cutoffs as needed.
+  → Configure paths in Cell 2 for PV and SST folders separately.
+  → Use Cell 4 for visual spot-checking.
+
+2. OPTIONAL: FILTER 'JUNK' OBJECTS
+-----------------------------------
+- If signal artifacts (e.g., dense junk in SST radiatum) are present:
+  → Use: `radiatum_sorting.ipynb`
+  → Train a classifier using manual annotations or pretrained labels.
+
+3. FINAL OBJECT DISTRIBUTION ANALYSIS
+--------------------------------------
+- Run:
+  - `PV2_Best_Cell_Dist.ipynb`
+  - `SST2_Best_Cell_Dist.ipynb`
+  
+  → These scripts:
+    - Remove junk objects (if applicable)
+    - Assign cells to CA1 strata (oriens, pyramidale, radiatum)
+    - Normalize distributions
+    - Generate summary plots
+    - Provide interactive QC viewers
+
+  → Final data saved to:
+    - `processed_results.csv` (one per color group)
+
+================================================================================
+III. PYTHON DEPENDENCIES
+================================================================================
+
+These scripts require the following packages:
+
+ipywidgets==8.1.2  
+joblib==1.4.2  
+matplotlib==3.10.3  
+numpy==1.23.5  
+pandas==2.2.3  
+pyarrow==20.0.0  
+roifile==2025.2.20  
+scipy==1.13.1  
+seaborn==0.13.2  
+shapely==2.0.6  
+tqdm==4.66.5  
+PIL  
+collections  
+datetime  
+pickle  
+re  
+shutil  
+skimage  
+sklearn
+
+Install using pip or create an environment with these packages before running the notebooks.
+
+================================================================================
+NOTES
+================================================================================
+
+- Carefully spot-check segmentation quality and region assignments throughout.
+- FIJI and Python scripts must be rerun separately for SST and PV datasets.
+- The final `.csv` files can be used for downstream statistics and visualization.
